@@ -50,7 +50,7 @@ export async function generatePdf(
       const s = Math.min(maxW / w, maxH / h);
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(M, 6, w * s + 4, h * s + 4, 2, 2, "F");
-      doc.addImage(logo, "PNG", M + 2, 8, w * s, h * s);
+      doc.addImage(logo, logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG", M + 2, 8, w * s, h * s);
       textX = M + w * s + 10;
     }
   }

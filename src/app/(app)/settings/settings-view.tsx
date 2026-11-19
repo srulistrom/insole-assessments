@@ -105,12 +105,12 @@ function Branding() {
   const file = useRef<HTMLInputElement>(null);
 
   async function upload(f: File) {
-    if (f.type !== "image/png") return toast.error("Please choose a PNG logo");
+    if (f.type !== "image/png" && f.type !== "image/jpeg") return toast.error("Please choose a PNG or JPG logo");
     setBusy(true);
     try {
       const supabase = supabaseBrowser();
-      const path = `logo-${Date.now()}.png`;
-      const { error } = await supabase.storage.from("branding").upload(path, f, { contentType: "image/png", cacheControl: "31536000" });
+      const path = `logo-${Date.now()}.${f.type === "image/png" ? "png" : "jpg"}`;
+      const { error } = await supabase.storage.from("branding").upload(path, f, { contentType: f.type, cacheControl: "31536000" });
       if (error) throw new Error(error.message);
       const url = supabase.storage.from("branding").getPublicUrl(path).data.publicUrl;
       await saveSettings({ logo_url: url });
@@ -141,9 +141,9 @@ function Branding() {
       <div className="flex items-center gap-4">
         <BrandLogo className="h-24 w-32 shrink-0 bg-white p-2 text-xs ring-1 ring-line" />
         <div className="flex-1 space-y-2">
-          <input ref={file} type="file" accept="image/png" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+          <input ref={file} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           <Button variant="outline" className="w-full" onClick={() => file.current?.click()} loading={busy}>
-            <ImagePlus /> {s.logo_url ? "Change logo" : "Upload logo (PNG)"}
+            <ImagePlus /> {s.logo_url ? "Change logo" : "Upload logo (PNG or JPG)"}
           </Button>
           {s.logo_url && (
             <Button
