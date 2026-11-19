@@ -69,9 +69,10 @@ export function PrintView({ id }: { id: string }) {
 
   // Embed the logo as a data URL so it is guaranteed to be loaded before printing.
   useEffect(() => {
-    if (!settings.logo_url) return setLogo(null);
-    urlToDataUrl(settings.logo_url).then((d) => setLogo(d));
-  }, [settings.logo_url]);
+    const src = settings.logo_dark_url ?? settings.logo_url; // paper is white, so prefer the dark artwork
+    if (!src) return setLogo(null);
+    urlToDataUrl(src).then((d) => setLogo(d));
+  }, [settings.logo_url, settings.logo_dark_url]);
 
   useEffect(() => {
     const fit = () => setScale(Math.min(1, (window.innerWidth - 24) / (297 * 3.7795)));

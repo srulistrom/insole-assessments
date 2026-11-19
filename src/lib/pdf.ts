@@ -41,9 +41,16 @@ export async function generatePdf(
   doc.setFillColor(...primary);
   doc.rect(0, 0, W, 34, "F");
   let textX = M;
-  if (settings.logo_url) {
-    const logo = await urlToDataUrl(settings.logo_url);
-    if (logo) {
+  const headerLogo = settings.logo_light_url ?? settings.logo_url; // header band is the brand colour
+  if (headerLogo) {
+    const logo = await urlToDataUrl(headerLogo);
+    if (logo && settings.logo_light_url) {
+      // Transparent artwork sits straight on the band, no white tile.
+      const { w, h } = await imageSize(logo);
+      const s = Math.min(46 / w, 24 / h);
+      doc.addImage(logo, "PNG", M, 5 + (24 - h * s) / 2, w * s, h * s);
+      textX = M + w * s + 8;
+    } else if (logo) {
       const { w, h } = await imageSize(logo);
       const maxH = 22;
       const maxW = 40;

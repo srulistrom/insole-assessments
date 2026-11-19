@@ -16,7 +16,7 @@ import { NewPasswordForm } from "@/components/new-password-form";
 import { InstallCard } from "@/components/install-card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-const PUBLIC_KEYS = new Set(["shop_name", "shop_address", "shop_phone", "primary_color", "accent_color", "logo_url"]);
+const PUBLIC_KEYS = new Set(["shop_name", "shop_address", "shop_phone", "primary_color", "accent_color", "logo_url", "logo_light_url", "logo_dark_url"]);
 
 async function saveSettings(patch: Partial<AppSettings>) {
   const rows = Object.entries(patch).map(([key, value]) => ({ key, value, is_public: PUBLIC_KEYS.has(key) }));
@@ -113,7 +113,7 @@ function Branding() {
       const { error } = await supabase.storage.from("branding").upload(path, f, { contentType: f.type, cacheControl: "31536000" });
       if (error) throw new Error(error.message);
       const url = supabase.storage.from("branding").getPublicUrl(path).data.publicUrl;
-      await saveSettings({ logo_url: url });
+      await saveSettings({ logo_url: url, logo_light_url: null, logo_dark_url: null }); // a new upload replaces any cut-out versions
       toast.success("Logo updated!");
       router.refresh();
     } catch (e) {
@@ -151,7 +151,7 @@ function Branding() {
               size="sm"
               className="w-full text-red-700"
               onClick={async () => {
-                await saveSettings({ logo_url: null });
+                await saveSettings({ logo_url: null, logo_light_url: null, logo_dark_url: null });
                 toast.success("Logo removed");
                 router.refresh();
               }}

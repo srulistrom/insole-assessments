@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto min-h-dvh max-w-3xl">
       <header className="sticky top-0 z-30 flex items-center gap-3 bg-primary px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)] text-primary-foreground shadow-soft">
-        <BrandLogo className="size-12 shrink-0 bg-white" />
+        <BrandLogo onDark className="h-12 w-[4.5rem] shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-extrabold leading-tight tracking-tight">{shop_name || "Insole Assessments"}</p>
           <p className="text-xs font-semibold opacity-75">Insole assessments</p>

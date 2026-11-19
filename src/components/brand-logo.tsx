@@ -2,12 +2,18 @@
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/settings-provider";
 
-/** Shop logo from settings, or a friendly "YOUR LOGO" placeholder until one is uploaded. */
+/**
+ * Shop logo from settings, or a friendly "YOUR LOGO" placeholder until one is uploaded.
+ * If transparent light/dark versions exist they are used so the logo sits directly on the surface
+ * (light version on coloured backgrounds, dark version on white); otherwise the original image is shown.
+ */
 export function BrandLogo({ className, onDark }: { className?: string; onDark?: boolean }) {
-  const { logo_url, shop_name } = useSettings();
-  if (logo_url) {
+  const { logo_url, logo_light_url, logo_dark_url, shop_name } = useSettings();
+  const variant = onDark ? logo_light_url : logo_dark_url;
+  const src = variant ?? logo_url;
+  if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logo_url} alt={shop_name || "Logo"} className={cn("rounded-2xl object-contain", className)} />;
+    return <img src={src} alt={shop_name || "Logo"} className={cn("object-contain", !variant && "rounded-2xl", className)} />;
   }
   return (
     <div

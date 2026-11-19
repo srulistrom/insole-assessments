@@ -27,7 +27,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ size: s
   const maskable = raw.includes("maskable");
 
   const s = await getPublicSettings();
-  const logo = await logoDataUrl(s.logo_url);
+  const logo = await logoDataUrl(s.logo_dark_url ?? s.logo_url);
   const tile = Math.round(px * (maskable ? 0.62 : 0.74));
   const initial = (s.shop_name.trim()[0] ?? "I").toUpperCase();
 

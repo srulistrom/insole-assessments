@@ -5,6 +5,9 @@ export interface AppSettings {
   primary_color: string;
   accent_color: string;
   logo_url: string | null;
+  /** Optional transparent versions of the logo: light artwork for coloured surfaces, dark artwork for white. */
+  logo_light_url: string | null;
+  logo_dark_url: string | null;
   field_email: boolean;
   field_notes: boolean;
   field_issue: boolean;
@@ -24,6 +27,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   primary_color: "#0F2A5C",
   accent_color: "#E8B84B",
   logo_url: null,
+  logo_light_url: null,
+  logo_dark_url: null,
   field_email: true,
   field_notes: true,
   field_issue: true,

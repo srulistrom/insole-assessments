@@ -59,7 +59,7 @@ export default function LoginPage() {
 
       <div className="animate-rise relative mx-auto w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center text-primary-foreground">
-          <BrandLogo className="mb-5 h-28 w-44 bg-white p-2 text-sm" />
+          <BrandLogo onDark className="mb-4 h-32 w-56 text-sm drop-shadow-[0_6px_20px_rgba(0,0,0,0.25)]" />
           <h1 className="text-3xl font-extrabold tracking-tight">{shop_name || "Insole Assessments"}</h1>
           {(shop_address || shop_phone) && (
             <p className="mt-2 text-sm font-medium opacity-75">{[shop_address, shop_phone].filter(Boolean).join(" · ")}</p>
