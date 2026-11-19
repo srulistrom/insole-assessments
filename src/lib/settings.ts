@@ -12,6 +12,8 @@ export interface AppSettings {
   field_notes: boolean;
   field_issue: boolean;
   field_shoe_size: boolean;
+  /** Which size system the shoe-size picker opens on. */
+  shoe_size_default: "UK" | "EU";
   whatsapp_group_link: string;
   whatsapp_group_name: string;
   country_code: string;
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   field_notes: true,
   field_issue: true,
   field_shoe_size: true,
+  shoe_size_default: "UK",
   whatsapp_group_link: "",
   whatsapp_group_name: "",
   country_code: "44",

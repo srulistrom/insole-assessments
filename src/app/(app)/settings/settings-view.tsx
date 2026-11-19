@@ -405,6 +405,26 @@ function Fields() {
           </div>
         ))}
       </div>
+      <div className="mt-2 border-t border-line pt-4">
+        <p className="text-[17px] font-bold">Shoe size starts on</p>
+        <p className="mb-3 text-sm font-medium text-muted">Staff can still switch between UK and EU on each assessment.</p>
+        <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-line/70 p-1.5">
+          {(["UK", "EU"] as const).map((sys) => (
+            <button
+              key={sys}
+              type="button"
+              onClick={async () => {
+                await saveSettings({ shoe_size_default: sys });
+                toast.success(`Shoe sizes now start on ${sys}`);
+                router.refresh();
+              }}
+              className={`h-12 rounded-xl text-base font-extrabold transition-all active:scale-[0.97] ${s.shoe_size_default === sys ? "bg-card text-primary shadow-soft" : "text-muted"}`}
+            >
+              {sys}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="mt-3 text-sm font-medium text-muted">Name and phone are always required. Drafts need shoe size when it is shown.</p>
     </Section>
   );

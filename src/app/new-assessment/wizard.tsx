@@ -17,6 +17,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { FoamPhotoCard } from "@/components/foam-photo-card";
 import { EMPTY_TERMS, OrderTerms, termsBalance, type Terms } from "@/components/order-terms";
 import { SupplierSheet } from "@/components/supplier-sheet";
+import { ShoeSizePicker } from "@/components/shoe-size-picker";
 
 const STEPS = ["Assessor", "Customer", "Foam", "Price", "Review"];
 const STORE_KEY = "insole-wizard-v1";
@@ -360,20 +361,7 @@ export function Wizard() {
         )}
         {step === 1 && customerScreens[sub] === "size" && (
           <Screen title="What's their shoe size?">
-            <Field label="Shoe size">
-              <Input autoFocus inputMode="text" autoComplete="off" value={form.shoe_size} onChange={(e) => patch({ shoe_size: e.target.value })} placeholder="e.g. UK 9" />
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              {["5", "6", "7", "8", "9", "10", "11", "12"].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => patch({ shoe_size: s })}
-                  className={cn("size-14 rounded-2xl border-2 text-lg font-extrabold active:scale-95", form.shoe_size === s ? "border-primary bg-primary text-primary-foreground" : "border-line bg-card")}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <ShoeSizePicker value={form.shoe_size} onChange={(v) => patch({ shoe_size: v })} defaultSystem={settings.shoe_size_default} />
           </Screen>
         )}
         {step === 1 && customerScreens[sub] === "extra" && (
