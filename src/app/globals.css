@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --primary: #0a3a6e;
+  --primary-foreground: #ffffff;
+  --gold: #c29a1e;
+  --gold-foreground: #0b1324;
+  --background: #f4f6fa;
+  --card: #ffffff;
+  --ink: #0b1324;
+  --muted: #5b6577;
+  --line: #e3e8f0;
+  --whatsapp: #1fa855;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-whatsapp: var(--whatsapp);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --shadow-soft: 0 1px 2px rgb(11 19 36 / 0.04), 0 8px 24px -8px rgb(11 19 36 / 0.1);
+  --shadow-lift: 0 2px 4px rgb(11 19 36 / 0.06), 0 18px 40px -12px rgb(11 19 36 / 0.22);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  overscroll-behavior-y: none;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-pop {
+  animation: pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-step {
+  animation: slide-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop,
+  .animate-step {
+    animation: none;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
