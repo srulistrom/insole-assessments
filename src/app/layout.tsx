@@ -5,6 +5,7 @@ import "./globals.css";
 import { supabaseServer } from "@/lib/supabase/server";
 import { DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
 import { themeCss } from "@/lib/color";
+import { getPublicSettings } from "@/lib/public-settings";
 import { SettingsProvider } from "@/components/settings-provider";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
@@ -15,14 +16,19 @@ export const metadata: Metadata = {
   title: "Insole Assessments",
   description: "Custom insole and arch assessments",
   appleWebApp: { capable: true, title: "Insoles", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      { url: "/icons/192", sizes: "192x192", type: "image/png" },
+      { url: "/icons/512", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/180", sizes: "180x180", type: "image/png" }],
+  },
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-  themeColor: "#0A3A6E",
-};
+export async function generateViewport(): Promise<Viewport> {
+  const s = await getPublicSettings();
+  return { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: s.primary_color };
+}
 
 async function loadSettings() {
   try {

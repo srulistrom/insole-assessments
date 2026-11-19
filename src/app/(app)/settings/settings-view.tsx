@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { NewPasswordForm } from "@/components/new-password-form";
+import { InstallCard } from "@/components/install-card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const PUBLIC_KEYS = new Set(["shop_name", "shop_address", "shop_phone", "primary_color", "accent_color", "logo_url"]);
@@ -66,6 +67,7 @@ export function SettingsView() {
   return (
     <div className="space-y-5">
       <h1 className="text-3xl font-extrabold tracking-tight">Settings</h1>
+      <InstallCard />
       <Branding key={`${settings.logo_url}`} />
       <ArchTypes />
       <Assessors />
