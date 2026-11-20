@@ -12,6 +12,7 @@ import { setStatus } from "@/lib/assessments";
 import { useSignedUrl } from "@/lib/photos";
 import { useSettings } from "@/components/settings-provider";
 import { StatusPill } from "@/components/status-pill";
+import { MoneyTiles } from "@/components/money-tiles";
 import { SupplierSheet } from "@/components/supplier-sheet";
 import { ReadyModal } from "@/components/ready-modal";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -84,15 +85,15 @@ export function JobDetail({ id }: { id: string }) {
       </Link>
 
       <section className="rounded-3xl bg-card p-6 shadow-soft">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-extrabold uppercase tracking-wider text-muted">{a.order_number}</p>
-            <h1 className="mt-1 text-3xl font-extrabold leading-tight tracking-tight">{fullName(a)}</h1>
+            <h1 className="mt-1 break-words text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-3xl">{fullName(a)}</h1>
           </div>
-          <StatusPill status={a.status} className="shrink-0" />
+          <StatusPill status={a.status} className="self-start" />
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-5 grid gap-3 min-[430px]:grid-cols-2">
           <Button asChild variant="soft">
             <a href={`tel:${a.phone.replace(/\s/g, "")}`}>
               <Phone /> {a.phone}
@@ -133,21 +134,7 @@ export function JobDetail({ id }: { id: string }) {
         {isDraft ? (
           <p className="mt-2 text-base font-medium text-muted">Waiting for the customer to decide. No price or deposit yet.</p>
         ) : (
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-2xl bg-background p-3">
-              <p className="text-xs font-bold uppercase text-muted">Price</p>
-              <p className="text-2xl font-extrabold tabular-nums">{money(a.price)}</p>
-            </div>
-            <div className="rounded-2xl bg-background p-3">
-              <p className="text-xs font-bold uppercase text-muted">Deposit</p>
-              <p className="text-2xl font-extrabold tabular-nums">{money(a.deposit_amount)}</p>
-              {a.deposit_payment_method && <p className="text-xs font-bold text-muted">{a.deposit_payment_method}</p>}
-            </div>
-            <div className={cn("rounded-2xl p-3", paid ? "bg-emerald-100 text-emerald-800" : "bg-primary text-primary-foreground")}>
-              <p className="text-xs font-bold uppercase opacity-75">Balance</p>
-              <p className="text-2xl font-extrabold tabular-nums">{money(a.balance_due)}</p>
-            </div>
-          </div>
+          <MoneyTiles className="mt-4" onCard price={a.price} deposit={a.deposit_amount} method={a.deposit_payment_method} balance={a.balance_due} />
         )}
       </section>
 

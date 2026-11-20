@@ -97,7 +97,7 @@ export function JobsList() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, phone or INS-001"
+            placeholder="Search name, phone, order"
             inputMode="search"
             enterKeyHint="search"
             className="h-14 w-full rounded-2xl border-2 border-line bg-card pl-14 pr-14 text-[18px] font-medium shadow-soft placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/15"

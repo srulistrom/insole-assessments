@@ -27,6 +27,26 @@ export async function compressImage(file: Blob, maxDim = 1600, quality = 0.82): 
   );
 }
 
+/** Downscale a data-URL image (keeps PNG transparency) so PDFs don't balloon in size. */
+export function shrinkDataUrl(dataUrl: string, maxW = 500): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth <= maxW) return resolve(dataUrl);
+      const s = maxW / img.naturalWidth;
+      const c = document.createElement("canvas");
+      c.width = maxW;
+      c.height = Math.max(1, Math.round(img.naturalHeight * s));
+      const ctx = c.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL(dataUrl.startsWith("data:image/jpeg") ? "image/jpeg" : "image/png", 0.88));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();

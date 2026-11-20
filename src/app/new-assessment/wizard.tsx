@@ -18,6 +18,7 @@ import { FoamPhotoCard } from "@/components/foam-photo-card";
 import { EMPTY_TERMS, OrderTerms, termsBalance, type Terms } from "@/components/order-terms";
 import { SupplierSheet } from "@/components/supplier-sheet";
 import { ShoeSizePicker } from "@/components/shoe-size-picker";
+import { MoneyTiles } from "@/components/money-tiles";
 
 const STEPS = ["Assessor", "Customer", "Foam", "Price", "Review"];
 const STORE_KEY = "insole-wizard-v1";
@@ -431,10 +432,10 @@ export function Wizard() {
           ) : (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" size="lg" onClick={() => save(true)} disabled={!!saving}>
+                <Button variant="outline" size="lg" className="px-3" onClick={() => save(true)} disabled={!!saving}>
                   <ClipboardCheck /> Put Aside
                 </Button>
-                <Button size="lg" onClick={() => save(false)} disabled={!!saving || !arch}>
+                <Button size="lg" className="px-3" onClick={() => save(false)} disabled={!!saving || !arch}>
                   <Check /> Save Order
                 </Button>
               </div>
@@ -571,18 +572,9 @@ function Review({
         {row("Assessor", assessor)}
         {row("Arch type", archName ?? "Not decided yet")}
       </dl>
-      <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-        {[
-          ["Price", money(parseMoney(terms.price))],
-          ["Deposit", money(parseMoney(terms.deposit))],
-          ["Balance", money(termsBalance(terms))],
-        ].map(([k, v], i) => (
-          <div key={k} className={cn("rounded-2xl p-4", i === 2 ? "bg-primary text-primary-foreground" : "bg-card shadow-soft")}>
-            <p className={cn("text-xs font-bold uppercase tracking-wide", i === 2 ? "opacity-75" : "text-muted")}>{k}</p>
-            <p className="mt-1 text-2xl font-extrabold tabular-nums">{v}</p>
-          </div>
-        ))}
-      </div>
+      {archName ? (
+        <MoneyTiles className="mt-5" price={parseMoney(terms.price)} deposit={parseMoney(terms.deposit)} method={parseMoney(terms.deposit) > 0 ? terms.method : null} balance={termsBalance(terms)} />
+      ) : null}
       {!archName && <p className="mt-4 text-center text-sm font-semibold text-muted">No arch type chosen - you can only put this aside as a draft. A label prints straight away.</p>}
     </section>
   );

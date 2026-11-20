@@ -143,7 +143,7 @@ function Branding() {
         <div className="flex-1 space-y-2">
           <input ref={file} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           <Button variant="outline" className="w-full" onClick={() => file.current?.click()} loading={busy}>
-            <ImagePlus /> {s.logo_url ? "Change logo" : "Upload logo (PNG or JPG)"}
+            <ImagePlus /> {s.logo_url ? "Change logo" : "Upload logo"}
           </Button>
           {s.logo_url && (
             <Button

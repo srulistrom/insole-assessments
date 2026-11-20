@@ -69,7 +69,7 @@ export function JobCard({ a, onChanged }: { a: Assessment; onChanged: () => void
           <div className="flex items-start gap-4">
             <div className="grid size-14 shrink-0 place-items-center rounded-full bg-primary text-xl font-extrabold text-primary-foreground">{initials(a)}</div>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-2xl font-extrabold leading-tight tracking-tight">{fullName(a)}</h3>
+              <h3 className="line-clamp-2 break-words text-[1.4rem] font-extrabold leading-tight tracking-tight">{fullName(a)}</h3>
               <p className="mt-0.5 text-sm font-bold text-muted">
                 {a.order_number} · {fmtDate(a.created_at)}
               </p>
@@ -85,21 +85,23 @@ export function JobCard({ a, onChanged }: { a: Assessment; onChanged: () => void
             )}
           </div>
 
-          <div className="mt-4 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-base font-bold">{a.arch_type_name ?? "Arch type not decided"}</p>
-              <p className="text-sm font-semibold text-muted">Assessor: {a.assessor_name ?? "-"}</p>
-            </div>
-            {!isDraft && (
-              <div className="text-right">
-                <p className="text-sm font-semibold text-muted">
-                  {money(a.price)} · deposit {money(a.deposit_amount)}
-                </p>
-                <p className={cn("text-3xl font-extrabold tabular-nums leading-none", paid ? "text-emerald-600" : "text-primary")}>{paid ? "Paid" : money(a.balance_due)}</p>
-                {!paid && <p className="text-xs font-bold uppercase tracking-wide text-muted">balance due</p>}
-              </div>
-            )}
+          <div className="mt-4">
+            <p className="text-base font-bold">{a.arch_type_name ?? "Arch type not decided"}</p>
+            <p className="break-words text-sm font-semibold text-muted">Assessor: {a.assessor_name ?? "-"}</p>
           </div>
+          {!isDraft && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl bg-background px-4 py-3">
+              <p className="text-sm font-semibold leading-snug text-muted">
+                {money(a.price)} price
+                <br />
+                {money(a.deposit_amount)} deposit
+              </p>
+              <div className="text-right">
+                <p className={cn("text-3xl font-extrabold tabular-nums leading-none", paid ? "text-emerald-600" : "text-primary")}>{paid ? "Paid" : money(a.balance_due)}</p>
+                {!paid && <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted">balance due</p>}
+              </div>
+            </div>
+          )}
         </Link>
 
         <div className="mt-4 flex gap-2">

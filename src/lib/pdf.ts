@@ -3,7 +3,7 @@ import type { Assessment } from "@/lib/types";
 import type { AppSettings } from "@/lib/settings";
 import { rgb } from "@/lib/color";
 import { fmtDate } from "@/lib/format";
-import { urlToDataUrl } from "@/lib/photos";
+import { shrinkDataUrl, urlToDataUrl } from "@/lib/photos";
 
 function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   return new Promise((resolve) => {
@@ -43,12 +43,13 @@ export async function generatePdf(
   let textX = M;
   const headerLogo = settings.logo_light_url ?? settings.logo_url; // header band is the brand colour
   if (headerLogo) {
-    const logo = await urlToDataUrl(headerLogo);
+    const rawLogo = await urlToDataUrl(headerLogo);
+    const logo = rawLogo ? await shrinkDataUrl(rawLogo, 600) : null; // keeps the PDF small
     if (logo && settings.logo_light_url) {
       // Transparent artwork sits straight on the band, no white tile.
       const { w, h } = await imageSize(logo);
       const s = Math.min(46 / w, 24 / h);
-      doc.addImage(logo, "PNG", M, 5 + (24 - h * s) / 2, w * s, h * s);
+      doc.addImage(logo, "PNG", M, 5 + (24 - h * s) / 2, w * s, h * s, undefined, "FAST");
       textX = M + w * s + 8;
     } else if (logo) {
       const { w, h } = await imageSize(logo);
@@ -57,7 +58,7 @@ export async function generatePdf(
       const s = Math.min(maxW / w, maxH / h);
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(M, 6, w * s + 4, h * s + 4, 2, 2, "F");
-      doc.addImage(logo, logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG", M + 2, 8, w * s, h * s);
+      doc.addImage(logo, logo.startsWith("data:image/jpeg") ? "JPEG" : "PNG", M + 2, 8, w * s, h * s, undefined, "FAST");
       textX = M + w * s + 10;
     }
   }
