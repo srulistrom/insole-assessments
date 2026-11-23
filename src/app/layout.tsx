@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import { supabaseServer } from "@/lib/supabase/server";
-import { DEFAULT_SETTINGS, mergeSettings } from "@/lib/settings";
+import { getSettings } from "@/lib/settings-server";
 import { themeCss } from "@/lib/color";
 import { getPublicSettings } from "@/lib/public-settings";
 import { SettingsProvider } from "@/components/settings-provider";
@@ -30,20 +30,18 @@ export async function generateViewport(): Promise<Viewport> {
   return { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: s.primary_color };
 }
 
-async function loadSettings() {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Is someone signed in? getClaims checks the sign-in cookie locally (no database round trip), then the
+  // settings come from a server cache rather than the database on every page.
+  let signedIn = false;
   try {
     const supabase = await supabaseServer();
-    const { data, error } = await supabase.from("settings").select("key,value");
-    if (error) console.error("[settings] could not load:", error.message);
-    return mergeSettings(data);
-  } catch (e) {
-    console.error("[settings] could not load:", (e as Error).message, (e as { cause?: unknown }).cause);
-    return DEFAULT_SETTINGS;
+    const { data } = await supabase.auth.getClaims();
+    signedIn = !!data?.claims;
+  } catch {
+    signedIn = false;
   }
-}
-
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await loadSettings();
+  const settings = await getSettings({ signedIn });
   return (
     <html lang="en" className={jakarta.variable}>
       <head>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidateTag } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exchangeCode, siteUrl } from "@/lib/google";
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
 
     await admin.from("integrations").upsert({ provider: "google", data: { refresh_token: refresh, email }, updated_at: new Date().toISOString() });
     await admin.from("settings").upsert({ key: "google_drive", value: { connected: true, email, connected_at: new Date().toISOString() }, is_public: false });
+    revalidateTag("settings");
     return back("drive=connected");
   } catch {
     return back("drive=error");

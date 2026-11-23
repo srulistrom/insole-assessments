@@ -5,11 +5,11 @@ export const dynamic = "force-dynamic";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const s = await getPublicSettings();
-  // Version the icon URLs so a changed logo or colour is picked up by installed copies.
-  const v = encodeURIComponent(`${s.logo_url ?? ""}${s.primary_color}`.slice(-40));
+  // Version the icon URLs so a changed colour is picked up by installed copies.
+  const v = encodeURIComponent(`2-${s.primary_color}${s.accent_color}`);
   return {
     id: "/jobs",
-    name: s.shop_name ? `${s.shop_name} - Insoles` : "Insole Assessments",
+    name: s.shop_name ? `${s.shop_name} Insoles` : "Insole Assessments",
     short_name: "Insoles",
     description: "Custom insole and arch assessments",
     start_url: "/jobs",

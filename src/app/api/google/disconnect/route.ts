@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -20,5 +21,6 @@ export async function POST() {
   }
   await admin.from("integrations").delete().eq("provider", "google");
   await admin.from("settings").upsert({ key: "google_drive", value: { connected: false }, is_public: false });
+  revalidateTag("settings");
   return NextResponse.json({ ok: true });
 }

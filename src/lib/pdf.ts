@@ -26,7 +26,7 @@ export function pdfFileName(a: Pick<Assessment, "order_number" | "first_name" | 
 export async function generatePdf(
   a: Assessment,
   settings: AppSettings,
-  photos: { right: string | null; left: string | null },
+  photos: (string | null)[],
 ): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
@@ -157,32 +157,54 @@ export async function generatePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...ink);
-  doc.text("Foam impressions", M, y);
+  doc.text(photos.length > 2 ? "Pictures" : "Picture 1 & 2", M, y);
   y += 4;
   const boxW = (W - 2 * M - 8) / 2;
-  const boxH = Math.min(297 - y - 22, 80);
-  const drawPhoto = async (label: string, data: string | null, x: number) => {
+  const drawPhoto = async (label: string, data: string | null, x: number, top: number, boxH: number) => {
     doc.setDrawColor(227, 232, 240);
     doc.setFillColor(250, 251, 253);
-    doc.roundedRect(x, y, boxW, boxH + 8, 3, 3, "FD");
+    doc.roundedRect(x, top, boxW, boxH + 8, 3, 3, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...primary);
-    doc.text(label, x + 4, y + 6);
+    doc.text(label, x + 4, top + 6);
     if (!data) return;
     const { w, h } = await imageSize(data);
     const s = Math.min((boxW - 8) / w, (boxH - 4) / h);
-    doc.addImage(data, "JPEG", x + (boxW - w * s) / 2, y + 9, w * s, h * s);
+    doc.addImage(data, "JPEG", x + (boxW - w * s) / 2, top + 9, w * s, h * s);
   };
-  await drawPhoto("RIGHT FOOT", photos.right, M);
-  await drawPhoto("LEFT FOOT", photos.left, M + boxW + 8);
+  const firstH = Math.min(297 - y - 22, 80);
+  await drawPhoto("PICTURE 1", photos[0] ?? null, M, y, firstH);
+  await drawPhoto("PICTURE 2", photos[1] ?? null, M + boxW + 8, y, firstH);
 
-  // Footer
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...muted);
-  doc.text(`${settings.shop_name || ""}  ${a.order_number}`.trim(), M, 290);
-  doc.text(`Generated ${fmtDate(new Date().toISOString(), true)}`, W - M, 290, { align: "right" });
+  // Extra pictures (3, 4, ...) go on following pages, two per row.
+  const footer = (pageNo: number) => {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.text(`${settings.shop_name || ""}  ${a.order_number}`.trim(), M, 290);
+    doc.text(`Generated ${fmtDate(new Date().toISOString(), true)}${pageNo > 1 ? `  ·  page ${pageNo}` : ""}`, W - M, 290, { align: "right" });
+  };
+  footer(1);
+  const extras = photos.slice(2);
+  if (extras.length) {
+    const rowH = 86; // photo area 78 + label
+    const perPage = 6; // 3 rows x 2
+    for (let i = 0; i < extras.length; i += perPage) {
+      doc.addPage();
+      const pageNo = 2 + i / perPage;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(...ink);
+      doc.text(`${a.order_number} · more pictures`, M, 20);
+      for (let j = 0; j < perPage && i + j < extras.length; j++) {
+        const col = j % 2;
+        const row = Math.floor(j / 2);
+        await drawPhoto(`PICTURE ${3 + i + j}`, extras[i + j], M + col * (boxW + 8), 28 + row * (rowH + 6), rowH - 8);
+      }
+      footer(pageNo);
+    }
+  }
 
   return doc.output("blob");
 }

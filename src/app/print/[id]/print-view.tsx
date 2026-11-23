@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import QRCode from "qrcode";
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { ArrowLeft, Download, Printer, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Assessment } from "@/lib/types";
@@ -13,6 +13,7 @@ import { generateLabelPdf, labelFileName } from "@/lib/label-pdf";
 import { urlToDataUrl } from "@/lib/photos";
 import { useSettings } from "@/components/settings-provider";
 import { Button } from "@/components/ui/button";
+import { SupplierSheet } from "@/components/supplier-sheet";
 
 // A4 landscape sheet. Only the LEFT half (148mm x 210mm, portrait) carries the label.
 // Fold the sheet down the dashed line -> A5 portrait.
@@ -69,7 +70,10 @@ export function PrintView({ id }: { id: string }) {
   const [qr, setQr] = useState<string | null>(null);
   const [logo, setLogo] = useState<string | null | undefined>(undefined); // undefined = still loading
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [isTouch, setIsTouch] = useState(false);
+  // iPhone/iPad Safari ignores the A4-landscape print setting, so those use the exact-size PDF instead.
+  // Android and computers print the page itself, which opens the normal print dialog straight away.
+  const [isIOS, setIsIOS] = useState(false);
+  const [askOpen, setAskOpen] = useState(false);
   const [scale, setScale] = useState(0.3);
   const [done, setDone] = useState(false);
   const autoFired = useRef(false);
@@ -94,7 +98,8 @@ export function PrintView({ id }: { id: string }) {
   }, [settings.logo_url, settings.logo_dark_url]);
 
   useEffect(() => {
-    setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+    const ua = navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && navigator.maxTouchPoints > 1));
     const fit = () => setScale(Math.min(1, (window.innerWidth - 24) / (297 * 3.7795)));
     fit();
     window.addEventListener("resize", fit);
@@ -114,8 +119,8 @@ export function PrintView({ id }: { id: string }) {
 
   const doPrint = useCallback(async () => {
     if (!a) return;
-    if (isTouch && pdfUrl) {
-      // Phones/tablets: open the PDF so it prints at true A4 landscape from the viewer's Share / Print menu.
+    if (isIOS && pdfUrl) {
+      // iPhone/iPad: open the PDF so it prints at true A4 landscape from Share > Print.
       window.open(pdfUrl, "_blank");
     } else {
       window.print();
@@ -124,29 +129,29 @@ export function PrintView({ id }: { id: string }) {
       try {
         await markLabelPrinted(a.id);
         setA((x) => (x ? { ...x, label_printed: true, label_printed_at: new Date().toISOString() } : x));
-        toast.success(isTouch ? "Label PDF opened" : "Printed!");
+        toast.success(isIOS ? "Label PDF opened" : "Printed!");
       } catch (e) {
         toast.error((e as Error).message);
       }
     } else {
-      toast.success(isTouch ? "Label PDF opened" : "Printed!");
+      toast.success(isIOS ? "Label PDF opened" : "Printed!");
     }
     setDone(true);
-  }, [a, isTouch, pdfUrl]);
+  }, [a, isIOS, pdfUrl]);
 
-  // Draft saved -> print immediately on a computer. (Phones need a tap: browsers block pop-ups that aren't tapped.)
+  // Draft saved -> open the print dialog immediately (iPhone/iPad need a tap first: Safari blocks pop-ups that aren't tapped).
   useEffect(() => {
-    if (!auto || isTouch || autoFired.current || !a || !qr || logo === undefined) return;
+    if (!auto || isIOS || autoFired.current || !a || !qr || logo === undefined) return;
     autoFired.current = true;
     const t = setTimeout(doPrint, 350);
     return () => clearTimeout(t);
-  }, [auto, isTouch, a, qr, logo, doPrint]);
+  }, [auto, isIOS, a, qr, logo, doPrint]);
 
   if (!a) return <div className="p-10 text-center text-lg font-bold">Loading label…</div>;
 
   const isDraft = a.status === "draft";
   const backHref = fromDraft || isDraft ? "/jobs?tab=drafts" : `/jobs/${a.id}`;
-  const ready = !!qr && logo !== undefined && (!isTouch || !!pdfUrl);
+  const ready = !!qr && logo !== undefined && (!isIOS || !!pdfUrl);
   const fullNameText = fullName(a);
 
   return (
@@ -169,7 +174,7 @@ export function PrintView({ id }: { id: string }) {
             </div>
           </div>
 
-          {auto && isTouch && !done && (
+          {auto && isIOS && !done && (
             <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-[15px] font-bold text-emerald-900">
               {isDraft ? "Draft saved." : "Saved."} Tap the button below to open the label for printing.
             </p>
@@ -179,14 +184,27 @@ export function PrintView({ id }: { id: string }) {
             <Printer /> {!ready ? "Preparing label…" : a.label_printed ? "Print again" : "Print label"}
           </Button>
 
-          {isTouch && pdfUrl && (
+          {pdfUrl && (
             <p className="text-center text-sm font-semibold text-muted">
-              The label opens as a PDF. Use <b>Share</b> (iPhone/iPad) or the <b>⋮</b> menu (Android), then <b>Print</b>. Choose <b>A4</b>.
-              {" "}
+              {isIOS ? (
+                <>
+                  The label opens as a PDF. Tap <b>Share</b>, then <b>Print</b>, and choose <b>A4</b>.{" "}
+                </>
+              ) : (
+                <>
+                  In the print window choose your printer, paper <b>A4</b>, <b>Landscape</b>, margins <b>None</b>.{" "}
+                </>
+              )}
               <a href={pdfUrl} download={labelFileName(a)} className="inline-flex items-center gap-1 font-bold text-primary underline">
                 <Download className="size-4" /> Save PDF
               </a>
             </p>
+          )}
+
+          {isDraft && (
+            <Button variant="whatsapp" size="lg" className="w-full" onClick={() => setAskOpen(true)}>
+              <Send /> Ask supplier's opinion
+            </Button>
           )}
 
           {done && (
@@ -276,6 +294,9 @@ export function PrintView({ id }: { id: string }) {
           <div className="fold-text">FOLD HERE</div>
         </div>
       </div>
+
+      <SupplierSheet assessment={a} open={askOpen} onOpenChange={setAskOpen} />
+
     </div>
   );
 }

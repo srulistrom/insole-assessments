@@ -6,6 +6,7 @@ import { Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Assessment, Status } from "@/lib/types";
+import { getJobsCache, setJobsCache } from "@/lib/jobs-cache";
 import { JobCard } from "@/components/job-card";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,8 @@ export function JobsList() {
   const tab = (TABS.find((t) => t.key === params.get("tab"))?.key ?? "active") as Tab;
   const [filter, setFilter] = useState<Status | "all">("all");
   const [q, setQ] = useState("");
-  const [rows, setRows] = useState<Assessment[] | null>(null);
+  // Start from the last list we loaded so coming back to Jobs is instant, then refresh quietly.
+  const [rows, setRows] = useState<Assessment[] | null>(() => getJobsCache());
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -46,6 +48,7 @@ export function JobsList() {
     else {
       setError(null);
       setRows(data as Assessment[]);
+      setJobsCache(data as Assessment[]);
     }
   }, []);
 

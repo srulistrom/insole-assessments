@@ -9,7 +9,8 @@ import { useSettings } from "@/components/settings-provider";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { shop_name } = useSettings();
-  const inWizard = pathname.startsWith("/new-assessment");
+  // Full-screen flows own the bottom of the screen with their own Save/Next bar, so the tab bar must not cover it.
+  const inWizard = pathname.startsWith("/new-assessment") || pathname.endsWith("/convert");
 
   const tab = (href: string, label: string, Icon: typeof Settings) => {
     const active = pathname.startsWith(href);

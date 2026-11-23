@@ -1,6 +1,6 @@
 "use client";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Assessment } from "@/lib/types";
+import { photoPaths, type Assessment } from "@/lib/types";
 import type { AppSettings } from "@/lib/settings";
 import { downloadFoamPhoto, blobToDataUrl } from "@/lib/photos";
 import { generatePdf } from "@/lib/pdf";
@@ -10,24 +10,21 @@ export interface SaveResult {
   driveWarning: string | null;
 }
 
-/** Build the PDF, store it in Supabase Storage and push everything to Google Drive. */
-export async function finalizeFiles(
-  id: string,
-  settings: AppSettings,
-  photoBlobs?: { right?: Blob | null; left?: Blob | null },
-): Promise<SaveResult> {
+/**
+ * Build the PDF, store it in Supabase Storage and push everything to Google Drive.
+ * `pictureBlobs` (optional) are the pictures in order, so a just-taken photo doesn't need downloading again.
+ */
+export async function finalizeFiles(id: string, settings: AppSettings, pictureBlobs?: (Blob | null)[]): Promise<SaveResult> {
   const supabase = supabaseBrowser();
   const { data: a, error } = await supabase.from("assessments").select("*").eq("id", id).single();
   if (error || !a) throw new Error(error?.message ?? "Assessment not found");
   const assessment = a as Assessment;
 
-  const right = photoBlobs?.right ?? (assessment.foam_photo_right_url ? await downloadFoamPhoto(assessment.foam_photo_right_url) : null);
-  const left = photoBlobs?.left ?? (assessment.foam_photo_left_url ? await downloadFoamPhoto(assessment.foam_photo_left_url) : null);
+  const paths = photoPaths(assessment);
+  const blobs = await Promise.all(paths.map(async (p, i) => pictureBlobs?.[i] ?? (await downloadFoamPhoto(p))));
+  const photos = await Promise.all(blobs.map((b) => (b ? blobToDataUrl(b) : Promise.resolve(null))));
 
-  const pdf = await generatePdf(assessment, settings, {
-    right: right ? await blobToDataUrl(right) : null,
-    left: left ? await blobToDataUrl(left) : null,
-  });
+  const pdf = await generatePdf(assessment, settings, photos);
   const pdfPath = `${id}/${assessment.order_number}.pdf`;
   const up = await supabase.storage.from("pdfs").upload(pdfPath, pdf, { contentType: "application/pdf", upsert: true });
   if (up.error) throw new Error(`PDF upload failed: ${up.error.message}`);

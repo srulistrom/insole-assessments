@@ -47,6 +47,8 @@ export interface Assessment {
   status: Status;
   foam_photo_right_url: string | null;
   foam_photo_left_url: string | null;
+  /** Optional extra pictures (Picture 3, 4, …) - storage paths in the "foam-photos" bucket. */
+  extra_photo_urls: string[] | null;
   label_printed: boolean;
   label_printed_at: string | null;
   pdf_path: string | null;
@@ -60,4 +62,14 @@ export interface Assessment {
   converted_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** All pictures in order: Picture 1 and 2 (older orders called them right/left foot), then any extras. */
+export function photoPaths(a: Pick<Assessment, "foam_photo_right_url" | "foam_photo_left_url" | "extra_photo_urls">): string[] {
+  return [a.foam_photo_right_url, a.foam_photo_left_url, ...(a.extra_photo_urls ?? [])].filter((p): p is string => !!p);
+}
+
+/** File name used in Google Drive / downloads: "Picture-3.jpg" -> "Picture 3.jpg"; old "Right.jpg"/"Left.jpg" are kept. */
+export function pictureFileName(path: string) {
+  return (path.split("/").pop() ?? "picture.jpg").replace(/^Picture-(\d+)/, "Picture $1");
 }

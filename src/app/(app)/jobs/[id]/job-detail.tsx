@@ -6,7 +6,8 @@ import { ArrowLeft, Archive, CheckCheck, CloudOff, FileText, HardDriveUpload, Me
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Assessment } from "@/lib/types";
+import { photoPaths, type Assessment } from "@/lib/types";
+import { getJobsCache, patchJobCache } from "@/lib/jobs-cache";
 import { fmtDate, fullName, money, toIntlPhone } from "@/lib/format";
 import { setStatus } from "@/lib/assessments";
 import { useSignedUrl } from "@/lib/photos";
@@ -37,7 +38,8 @@ export function JobDetail({ id }: { id: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const { country_code } = useSettings();
-  const [a, setA] = useState<Assessment | null>(null);
+  // Show the job instantly from the list we already loaded, then refresh it in the background.
+  const [a, setA] = useState<Assessment | null>(() => getJobsCache()?.find((r) => r.id === id) ?? null);
   const [missing, setMissing] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [ready, setReady] = useState(false);
@@ -47,7 +49,10 @@ export function JobDetail({ id }: { id: string }) {
   const load = useCallback(async () => {
     const { data } = await supabaseBrowser().from("assessments").select("*").eq("id", id).maybeSingle();
     if (!data) setMissing(true);
-    else setA(data as Assessment);
+    else {
+      setA(data as Assessment);
+      patchJobCache(data as Assessment);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -139,8 +144,9 @@ export function JobDetail({ id }: { id: string }) {
       </section>
 
       <section className="grid grid-cols-2 gap-3">
-        <Photo path={a.foam_photo_right_url} label="Right foot" />
-        <Photo path={a.foam_photo_left_url} label="Left foot" />
+        {photoPaths(a).map((p, i) => (
+          <Photo key={p} path={p} label={`Picture ${i + 1}`} />
+        ))}
       </section>
 
       <section className="space-y-2 rounded-3xl bg-card p-5 text-[15px] font-semibold shadow-soft">
@@ -172,6 +178,9 @@ export function JobDetail({ id }: { id: string }) {
               <Link href={`/jobs/${a.id}/convert`}>
                 <CheckCheck /> Convert to Order / Customer Approved
               </Link>
+            </Button>
+            <Button variant="whatsapp" size="lg" className="w-full" onClick={() => setSheet(true)}>
+              <Send /> Ask supplier's opinion
             </Button>
             <Button variant="destructive-outline" className="w-full" onClick={() => setConfirmCancel(true)}>
               <Archive /> Archive / Cancel Draft

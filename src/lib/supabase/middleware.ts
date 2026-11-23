@@ -20,10 +20,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  let user = null;
+  // getClaims verifies the signed sign-in token locally (no call to Supabase on every tap) and still
+  // refreshes it when it has expired. getUser() made a network round trip on every single page change.
+  let user: unknown = null;
   try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
+    const { data } = await supabase.auth.getClaims();
+    user = data?.claims ?? null;
   } catch {
     user = null;
   }

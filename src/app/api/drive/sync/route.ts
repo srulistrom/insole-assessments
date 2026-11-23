@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { photoPaths, pictureFileName } from "@/lib/types";
 import {
   GoogleAuthError,
   accessTokenFromRefresh,
@@ -18,7 +19,7 @@ const ROOT_NAME = "Insole Orders";
 
 /**
  * Uploads/refreshes the order folder in the connected Google Drive:
- *   /Insole Orders/{OrderNumber} - {LastName}/  ->  PDF + Right.jpg + Left.jpg
+ *   /Insole Orders/{OrderNumber} - {LastName}/  ->  PDF + Picture 1.jpg + Picture 2.jpg (+ more)
  * Idempotent: the same folder + PDF file are updated in place (draft -> final), never duplicated.
  */
 export async function POST(req: Request) {
@@ -61,11 +62,8 @@ export async function POST(req: Request) {
     else folderId = await createFolder(token, folderName, rootId);
 
     // Photos
-    for (const [path, name] of [
-      [a.foam_photo_right_url, "Right.jpg"],
-      [a.foam_photo_left_url, "Left.jpg"],
-    ] as const) {
-      if (!path) continue;
+    for (const path of photoPaths(a)) {
+      const name = pictureFileName(path); // "Picture 1.jpg", "Picture 2.jpg", "Picture 3.jpg"… (older orders: Right.jpg / Left.jpg)
       const { data: blob } = await admin.storage.from("foam-photos").download(path);
       if (!blob) continue;
       const existing = await findFileInFolder(token, folderId, name);

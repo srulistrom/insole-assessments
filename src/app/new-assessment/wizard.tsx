@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { get, set, del } from "idb-keyval";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardCheck, Printer, Send, TriangleAlert, UserRound, WifiOff, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardCheck, Plus, Printer, Send, TriangleAlert, UserRound, WifiOff, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -20,7 +20,8 @@ import { SupplierSheet } from "@/components/supplier-sheet";
 import { ShoeSizePicker } from "@/components/shoe-size-picker";
 import { MoneyTiles } from "@/components/money-tiles";
 
-const STEPS = ["Assessor", "Customer", "Foam", "Price", "Review"];
+const STEPS = ["Assessor", "Customer", "Pictures", "Price", "Review"];
+const MAX_PICS = 6;
 const STORE_KEY = "insole-wizard-v1";
 
 interface Form {
@@ -45,8 +46,8 @@ export function Wizard() {
   const [sub, setSub] = useState(0);
   const [assessorId, setAssessorId] = useState<string | null>(null);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
-  const [right, setRight] = useState<Blob | null>(null);
-  const [left, setLeft] = useState<Blob | null>(null);
+  // Pictures in order: [0] = Picture 1, [1] = Picture 2 (both required), then optional extras. null = empty slot.
+  const [pics, setPics] = useState<(Blob | null)[]>([null, null]);
   const [terms, setTerms] = useState<Terms>(EMPTY_TERMS);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -84,8 +85,8 @@ export function Wizard() {
           setAssessorId(s.assessorId ?? null);
           setForm({ ...EMPTY_FORM, ...s.form });
           setTerms({ ...EMPTY_TERMS, ...s.terms });
-          setRight((await get(STORE_KEY + "-right")) ?? null);
-          setLeft((await get(STORE_KEY + "-left")) ?? null);
+          const saved = (await get(STORE_KEY + "-pics")) as (Blob | null)[] | undefined;
+          if (Array.isArray(saved) && saved.length >= 2) setPics(saved);
           if (s.assessorId || s.form?.first_name) toast("Picked up where you left off");
         }
       } catch {
@@ -114,17 +115,13 @@ export function Wizard() {
 
   useEffect(() => {
     if (!loaded || result) return;
-    (right ? set(STORE_KEY + "-right", right) : del(STORE_KEY + "-right")).catch(() => {});
-  }, [right, loaded, result]);
-  useEffect(() => {
-    if (!loaded || result) return;
-    (left ? set(STORE_KEY + "-left", left) : del(STORE_KEY + "-left")).catch(() => {});
-  }, [left, loaded, result]);
+    (pics.some(Boolean) ? set(STORE_KEY + "-pics", pics) : del(STORE_KEY + "-pics")).catch(() => {});
+  }, [pics, loaded, result]);
 
   const clearStore = useCallback(async () => {
     try {
       localStorage.removeItem(STORE_KEY);
-      await Promise.all([del(STORE_KEY + "-right"), del(STORE_KEY + "-left")]);
+      await del(STORE_KEY + "-pics");
     } catch {
       /* ignore */
     }
@@ -155,8 +152,8 @@ export function Wizard() {
     if (!form.first_name.trim() || !form.last_name.trim()) p.push("Name");
     if (!form.phone.trim()) p.push("Phone");
     if (settings.field_shoe_size && !form.shoe_size.trim()) p.push("Shoe size");
-    if (!right) p.push("Right foot photo");
-    if (!left) p.push("Left foot photo");
+    if (!pics[0]) p.push("Picture 1");
+    if (!pics[1]) p.push("Picture 2");
     return p;
   }
   function orderProblems() {
@@ -180,7 +177,7 @@ export function Wizard() {
       return setStep(2);
     }
     if (step === 2) {
-      if (!right || !left) return toast.error("Take both foam photos first", { description: "Right foot and left foot are needed." });
+      if (!pics[0] || !pics[1]) return toast.error("Add Picture 1 and Picture 2 first", { description: "Extra pictures are optional." });
       return setStep(3);
     }
     if (step === 3) {
@@ -216,7 +213,7 @@ export function Wizard() {
   }
 
   // ----- save -----
-  async function save(asDraft: boolean) {
+  async function save(asDraft: boolean, askSupplier = false) {
     const problems = asDraft ? draftProblems() : orderProblems();
     if (problems.length) {
       return toast.error("Still needed", { description: problems.join(", ") });
@@ -227,14 +224,15 @@ export function Wizard() {
     const supabase = supabaseBrowser();
     const id = crypto.randomUUID();
     try {
-      setSaving("Uploading photos…");
+      setSaving("Uploading pictures…");
       const upload = async (b: Blob, name: string) => {
         const path = `${id}/${name}`;
         const { error } = await supabase.storage.from("foam-photos").upload(path, b, { contentType: "image/jpeg", upsert: true });
-        if (error) throw new Error(`Photo upload failed: ${error.message}`);
+        if (error) throw new Error(`Picture upload failed: ${error.message}`);
         return path;
       };
-      const [rPath, lPath] = await Promise.all([upload(right!, "Right.jpg"), upload(left!, "Left.jpg")]);
+      const taken = pics.filter((b): b is Blob => !!b); // empty extra slots are skipped
+      const paths = await Promise.all(taken.map((b, k) => upload(b, `Picture-${k + 1}.jpg`)));
 
       setSaving("Saving…");
       const { error } = await supabase.from("assessments").insert({
@@ -254,19 +252,20 @@ export function Wizard() {
         assessor_id: assessor!.id,
         assessor_name: assessor!.name,
         status: asDraft ? "draft" : "new",
-        foam_photo_right_url: rPath,
-        foam_photo_left_url: lPath,
+        foam_photo_right_url: paths[0],
+        foam_photo_left_url: paths[1],
+        extra_photo_urls: paths.slice(2),
       });
       if (error) throw new Error(error.message);
 
       setSaving("Making PDF & backing up…");
-      const res = await finalizeFiles(id, settings, { right, left });
+      const res = await finalizeFiles(id, settings, taken);
       await clearStore();
 
       if (asDraft) {
         toast.success("Saved as draft!", { description: `${res.assessment.order_number} - printing label…` });
         if (res.driveWarning) toast.warning(res.driveWarning);
-        router.replace(`/print/${id}?auto=1&from=draft`);
+        router.replace(`/print/${id}?auto=1&from=draft${askSupplier ? "&ask=1" : ""}`);
         return;
       }
       toast.success("Saved!", { description: res.assessment.order_number });
@@ -387,12 +386,24 @@ export function Wizard() {
 
         {step === 2 && (
           <section>
-            <h1 className="text-3xl font-extrabold tracking-tight">Foam photos</h1>
-            <p className="mt-1 text-base font-medium text-muted">One clear photo of each foam impression.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">Pictures</h1>
+            <p className="mt-1 text-base font-medium text-muted">Two clear pictures are needed. Add more if it helps.</p>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
-              <FoamPhotoCard label="RIGHT FOOT" blob={right} onChange={setRight} />
-              <FoamPhotoCard label="LEFT FOOT" blob={left} onChange={setLeft} />
+              {pics.map((b, i) => (
+                <FoamPhotoCard
+                  key={i}
+                  label={`PICTURE ${i + 1}`}
+                  blob={b}
+                  onChange={(nb) => setPics((p) => p.map((x, j) => (j === i ? nb : x)))}
+                  onRemove={i >= 2 ? () => setPics((p) => p.filter((_, j) => j !== i)) : undefined}
+                />
+              ))}
             </div>
+            {pics.length < MAX_PICS && (
+              <Button variant="outline" className="mt-5 w-full" onClick={() => setPics((p) => [...p, null])}>
+                <Plus /> Add another picture
+              </Button>
+            )}
           </section>
         )}
 
@@ -410,8 +421,7 @@ export function Wizard() {
             assessor={assessor?.name ?? ""}
             archName={arch?.name ?? null}
             terms={terms}
-            right={right}
-            left={left}
+            pics={pics}
             draftMissing={draftProblems()}
           />
         )}
@@ -439,6 +449,11 @@ export function Wizard() {
                   <Check /> Save Order
                 </Button>
               </div>
+              {!arch && (
+                <Button variant="outline" className="w-full border-whatsapp/50 text-[#15803d]" onClick={() => save(true, true)} disabled={!!saving}>
+                  <Send /> Put aside &amp; ask supplier's opinion
+                </Button>
+              )}
               <Button variant="ghost" className="w-full" onClick={back}>
                 <ArrowLeft /> Back
               </Button>
@@ -508,29 +523,23 @@ function Review({
   assessor,
   archName,
   terms,
-  right,
-  left,
+  pics,
   draftMissing,
 }: {
   form: Form;
   assessor: string;
   archName: string | null;
   terms: Terms;
-  right: Blob | null;
-  left: Blob | null;
+  pics: (Blob | null)[];
   draftMissing: string[];
 }) {
   const settings = useSettings();
-  const [urls, setUrls] = useState<{ r?: string; l?: string }>({});
+  const [urls, setUrls] = useState<(string | null)[]>([]);
   useEffect(() => {
-    const r = right ? URL.createObjectURL(right) : undefined;
-    const l = left ? URL.createObjectURL(left) : undefined;
-    setUrls({ r, l });
-    return () => {
-      if (r) URL.revokeObjectURL(r);
-      if (l) URL.revokeObjectURL(l);
-    };
-  }, [right, left]);
+    const made = pics.map((b) => (b ? URL.createObjectURL(b) : null));
+    setUrls(made);
+    return () => made.forEach((u) => u && URL.revokeObjectURL(u));
+  }, [pics]);
 
   const row = (k: string, v: string) =>
     v ? (
@@ -549,18 +558,15 @@ function Review({
         </p>
       )}
       <div className="mt-5 grid grid-cols-2 gap-3">
-        {[
-          ["Right foot", urls.r],
-          ["Left foot", urls.l],
-        ].map(([label, src]) => (
-          <div key={label} className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/5">
-            {src && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={src} alt={label} className="size-full object-cover" />
-            )}
-            <span className="absolute bottom-2 left-2 rounded-full bg-ink/70 px-3 py-1 text-xs font-extrabold text-white">{label}</span>
-          </div>
-        ))}
+        {urls.map((src, i) =>
+          src ? (
+            <div key={i} className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-primary/5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`Picture ${i + 1}`} className="size-full object-cover" />
+              <span className="absolute bottom-2 left-2 rounded-full bg-ink/70 px-3 py-1 text-xs font-extrabold text-white">Picture {i + 1}</span>
+            </div>
+          ) : null,
+        )}
       </div>
       <dl className="mt-5 divide-y divide-line rounded-3xl bg-card px-5 py-2 shadow-soft">
         {row("Customer", `${form.first_name} ${form.last_name}`)}

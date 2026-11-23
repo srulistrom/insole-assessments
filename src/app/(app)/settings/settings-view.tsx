@@ -1,7 +1,7 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HardDrive, ImagePlus, KeyRound, LogOut, MessageCircle, Palette, Plus, Trash2, Unplug, Users, Wallet, Layers, ToggleRight } from "lucide-react";
+import { HardDrive, KeyRound, LogOut, MessageCircle, Palette, Plus, Trash2, Unplug, Users, Wallet, Layers, ToggleRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { ASSESSOR_COLUMNS, type ArchType, type Assessor } from "@/lib/types";
@@ -22,6 +22,7 @@ async function saveSettings(patch: Partial<AppSettings>) {
   const rows = Object.entries(patch).map(([key, value]) => ({ key, value, is_public: PUBLIC_KEYS.has(key) }));
   const { error } = await supabaseBrowser().from("settings").upsert(rows);
   if (error) throw new Error(error.message);
+  await fetch("/api/settings/revalidate", { method: "POST" }).catch(() => {}); // refresh the server's settings cache
 }
 
 function Section({ icon: Icon, title, hint, children }: { icon: typeof Palette; title: string; hint?: string; children: React.ReactNode }) {
@@ -53,7 +54,7 @@ export function SettingsView() {
     const msg: Record<string, [string, string?]> = {
       connected: ["Google Drive connected!"],
       denied: ["Google Drive not connected", "You cancelled the Google permission screen."],
-      not_configured: ["Google isn't set up yet", "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to the server settings."],
+      not_configured: ["Google Drive isn't switched on yet", "It needs a one-time setup in Google Cloud first (the two GOOGLE_ keys on the server)."],
       bad_state: ["Please try connecting again"],
       no_refresh: ["Google didn't allow offline access", "Remove the app at myaccount.google.com/permissions and connect again."],
       error: ["Google Drive connection failed"],
@@ -68,7 +69,6 @@ export function SettingsView() {
     <div className="space-y-5">
       <h1 className="text-3xl font-extrabold tracking-tight">Settings</h1>
       <InstallCard />
-      <Branding key={`${settings.logo_url}`} />
       <ArchTypes />
       <Assessors />
       <Fields />
@@ -89,108 +89,6 @@ export function SettingsView() {
         <LogOut className="size-5" /> Sign out of this device
       </button>
     </div>
-  );
-}
-
-/* ---------------- Branding ---------------- */
-function Branding() {
-  const router = useRouter();
-  const s = useSettings();
-  const [name, setName] = useState(s.shop_name);
-  const [address, setAddress] = useState(s.shop_address);
-  const [phone, setPhone] = useState(s.shop_phone);
-  const [primary, setPrimary] = useState(s.primary_color);
-  const [accent, setAccent] = useState(s.accent_color);
-  const [busy, setBusy] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
-
-  async function upload(f: File) {
-    if (f.type !== "image/png" && f.type !== "image/jpeg") return toast.error("Please choose a PNG or JPG logo");
-    setBusy(true);
-    try {
-      const supabase = supabaseBrowser();
-      const path = `logo-${Date.now()}.${f.type === "image/png" ? "png" : "jpg"}`;
-      const { error } = await supabase.storage.from("branding").upload(path, f, { contentType: f.type, cacheControl: "31536000" });
-      if (error) throw new Error(error.message);
-      const url = supabase.storage.from("branding").getPublicUrl(path).data.publicUrl;
-      await saveSettings({ logo_url: url, logo_light_url: null, logo_dark_url: null }); // a new upload replaces any cut-out versions
-      toast.success("Logo updated!");
-      router.refresh();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function save() {
-    setBusy(true);
-    try {
-      await saveSettings({ shop_name: name.trim(), shop_address: address.trim(), shop_phone: phone.trim(), primary_color: primary, accent_color: accent });
-      toast.success("Branding saved!");
-      router.refresh();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Section icon={Palette} title="Shop Branding" hint="Shown on the login screen, header, labels and PDFs">
-      <div className="flex items-center gap-4">
-        <BrandLogo className="h-24 w-32 shrink-0 bg-white p-2 text-xs ring-1 ring-line" />
-        <div className="flex-1 space-y-2">
-          <input ref={file} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          <Button variant="outline" className="w-full" onClick={() => file.current?.click()} loading={busy}>
-            <ImagePlus /> {s.logo_url ? "Change logo" : "Upload logo"}
-          </Button>
-          {s.logo_url && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-red-700"
-              onClick={async () => {
-                await saveSettings({ logo_url: null, logo_light_url: null, logo_dark_url: null });
-                toast.success("Logo removed");
-                router.refresh();
-              }}
-            >
-              Remove logo
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-6 space-y-4">
-        <Field label="Shop name">
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Address">
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-        </Field>
-        <Field label="Phone">
-          <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            ["Primary colour", primary, setPrimary],
-            ["Accent colour", accent, setAccent],
-          ].map(([label, val, setter]) => (
-            <label key={label as string} className="block space-y-2">
-              <span className="text-[15px] font-bold">{label as string}</span>
-              <span className="flex h-14 items-center gap-3 rounded-2xl border-2 border-line bg-card px-3">
-                <input type="color" value={val as string} onChange={(e) => (setter as (v: string) => void)(e.target.value)} className="size-9 shrink-0 cursor-pointer rounded-lg border-0 bg-transparent p-0" />
-                <span className="font-mono text-sm font-bold uppercase">{val as string}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <Button size="lg" className="w-full" onClick={save} loading={busy}>
-          Save branding
-        </Button>
-      </div>
-    </Section>
   );
 }
 
