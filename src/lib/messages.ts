@@ -46,3 +46,81 @@ export function supplierMessage(a: Assessment) {
 export function readyMessage(a: Assessment) {
   return `Hi ${a.first_name}, your custom insoles (${a.arch_type_name ?? "custom"}) are ready to collect! Balance due: ${money(a.balance_due)}. See you soon!`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Edited orders                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface Change {
+  key: string;
+  label: string;
+  labelHe: string;
+  from: string;
+  to: string;
+}
+
+/** Every field the supplier cares about, compared before and after an edit. */
+export function computeChanges(before: Assessment, after: Assessment): Change[] {
+  const out: Change[] = [];
+  const add = (key: string, label: string, labelHe: string, from: string, to: string) => {
+    if (from !== to) out.push({ key, label, labelHe, from, to });
+  };
+  add("name", "Name", "שם", `${before.first_name} ${before.last_name}`.trim(), `${after.first_name} ${after.last_name}`.trim());
+  add("phone", "Phone", "טלפון", dash(before.phone), dash(after.phone));
+  add("shoe", "Shoe size", "מידת נעל", dash(before.shoe_size), dash(after.shoe_size));
+  add("issue", "Issue", "בעיה", dash(before.issue), dash(after.issue));
+  add("notes", "Notes", "הערות", dash(before.notes), dash(after.notes));
+  add("arch", "Arch type", "סוג קשת", dash(before.arch_type_name), dash(after.arch_type_name));
+  add("price", "Price", "מחיר", money(before.price), money(after.price));
+  add("deposit", "Deposit", "מקדמה", money(before.deposit_amount), money(after.deposit_amount));
+  add("method", "Deposit paid by", "אמצעי תשלום למקדמה", dash(before.deposit_payment_method), dash(after.deposit_payment_method));
+  return out;
+}
+
+/**
+ * Message for an order that was edited after the supplier already had it.
+ * The regular English update comes first; the same update in Hebrew follows it (in addition, not instead).
+ * Field names and the wording are translated; names, numbers and anything typed in by hand stay exactly as typed.
+ */
+export function editMessage(a: Assessment, changes: Change[]) {
+  const name = `${a.first_name} ${a.last_name}`.trim();
+  const method = a.deposit_payment_method ?? "-";
+
+  const english = [
+    `✏️ ORDER UPDATED - ${a.order_number}`,
+    `Name: ${name}`,
+    "",
+    "What changed:",
+    ...changes.map((c) => `• ${c.label}: ${c.from} → ${c.to}`),
+    "",
+    "Order now:",
+    `Type: ${a.arch_type_name ?? "-"} - ${money(a.price)}`,
+    `Deposit: ${money(a.deposit_amount)} (${method}) - Balance: ${money(a.balance_due)}`,
+    `Phone: ${a.phone}`,
+    `Shoe Size: ${dash(a.shoe_size)}`,
+    `Issue: ${dash(a.issue)}`,
+    `Notes: ${dash(a.notes)}`,
+    "",
+    "Please update this order accordingly.",
+  ];
+
+  const hebrew = [
+    `✏️ ההזמנה עודכנה - ${a.order_number}`,
+    `שם: ${name}`,
+    "",
+    "מה השתנה:",
+    ...changes.map((c) => `• ${c.labelHe}: היה ${c.from} | עכשיו ${c.to}`),
+    "",
+    "ההזמנה כעת:",
+    `סוג: ${a.arch_type_name ?? "-"} - ${money(a.price)}`,
+    `מקדמה: ${money(a.deposit_amount)} (${method}) - יתרה לתשלום: ${money(a.balance_due)}`,
+    `טלפון: ${a.phone}`,
+    `מידת נעל: ${dash(a.shoe_size)}`,
+    `בעיה: ${dash(a.issue)}`,
+    `הערות: ${dash(a.notes)}`,
+    "",
+    "אנא עדכנו את ההזמנה בהתאם.",
+  ];
+
+  return [...english, "", "──────────", "", ...hebrew].join("\n");
+}

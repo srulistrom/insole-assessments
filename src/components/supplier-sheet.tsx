@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, Download, ExternalLink, Send, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Copy, Download, ExternalLink, Pencil, Send, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { photoPaths, pictureFileName, type Assessment } from "@/lib/types";
-import { supplierMessage } from "@/lib/messages";
+import { editMessage, supplierMessage, type Change } from "@/lib/messages";
 import { downloadFoamPhoto, saveBlob } from "@/lib/photos";
 import { setStatus } from "@/lib/assessments";
 import { useSettings } from "@/components/settings-provider";
@@ -11,30 +11,35 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 /**
- * Share an order with the supplier on WhatsApp. For a DRAFT (no arch type yet) the message is an
- * "opinion needed" request that says clearly it is not a confirmed order, and the status is left alone.
+ * Share an order with the supplier on WhatsApp.
+ *  - Normal order: the order message + pictures; marks the order "Sent to Supplier".
+ *  - Draft (no arch type yet): an "opinion needed" request that says clearly it is not a confirmed order.
+ *  - Edited order (`changes` given): what changed, in English followed by the same in Hebrew. No pictures, no status change.
  */
 export function SupplierSheet({
   assessment,
   open,
   onOpenChange,
   onSent,
+  changes,
 }: {
   assessment: Assessment;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSent?: () => void;
+  changes?: Change[];
 }) {
   const settings = useSettings();
   const [files, setFiles] = useState<File[]>([]);
-  const isOpinion = assessment.status === "draft";
-  const message = supplierMessage(assessment);
+  const isEdit = !!changes && changes.length > 0;
+  const isOpinion = !isEdit && assessment.status === "draft";
+  const message = isEdit ? editMessage(assessment, changes!) : supplierMessage(assessment);
   const alreadySent = assessment.status === "sent_to_supplier";
   const paths = photoPaths(assessment).join("|");
 
-  // Pre-load photos so navigator.share can run inside the tap (required by browsers).
+  // Pre-load photos so navigator.share can run inside the tap (required by browsers). An update doesn't resend them.
   useEffect(() => {
-    if (!open) return;
+    if (!open || isEdit) return;
     let cancelled = false;
     (async () => {
       const out: File[] = [];
@@ -47,9 +52,14 @@ export function SupplierSheet({
     return () => {
       cancelled = true;
     };
-  }, [open, paths, assessment.order_number]);
+  }, [open, isEdit, paths, assessment.order_number]);
 
   async function markSent() {
+    if (isEdit) {
+      toast.success("Update sent!", { description: "The supplier has the changes in English and Hebrew" });
+      onSent?.();
+      return;
+    }
     if (isOpinion) {
       toast.success("Sent!", { description: "Opinion request shared - the draft stays as a draft" });
       return;
@@ -75,7 +85,7 @@ export function SupplierSheet({
 
   async function share() {
     const data: ShareData = { text: message, title: assessment.order_number };
-    if (files.length && navigator.canShare?.({ files })) data.files = files;
+    if (!isEdit && files.length && navigator.canShare?.({ files })) data.files = files;
     try {
       if (navigator.share) {
         await navigator.share(data);
@@ -87,7 +97,7 @@ export function SupplierSheet({
     }
     // Fallback: no Web Share (desktop / old browser)
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
-    toast("WhatsApp opened - attach the pictures with Download Pictures");
+    toast(isEdit ? "WhatsApp opened" : "WhatsApp opened - attach the pictures with Download Pictures");
   }
 
   function openGroup() {
@@ -109,7 +119,7 @@ export function SupplierSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={isOpinion ? "Ask supplier's opinion" : "Send to supplier"}
+        title={isEdit ? "Send update to supplier" : isOpinion ? "Ask supplier's opinion" : "Send to supplier"}
         description={settings.whatsapp_group_name ? `WhatsApp group: ${settings.whatsapp_group_name}` : "Share this on WhatsApp"}
       >
         {isOpinion && (
@@ -118,31 +128,51 @@ export function SupplierSheet({
             This is not an order. The message tells the supplier no arch type is chosen and asks which one to use. Nothing is confirmed.
           </p>
         )}
-        <pre dir="auto" className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-background p-4 text-[15px] font-medium leading-relaxed">{message}</pre>
+        {isEdit && (
+          <p className="mb-4 flex items-start gap-2.5 rounded-2xl bg-sky-50 p-4 text-[15px] font-bold leading-snug text-sky-900">
+            <Pencil className="mt-0.5 size-5 shrink-0" />
+            This lists what changed in English, followed by the same in Hebrew. The pictures aren't sent again.
+          </p>
+        )}
+        {/* each line sets its own direction, so the Hebrew lines read right-to-left like they will in WhatsApp */}
+        <div className="max-h-56 overflow-y-auto rounded-2xl bg-background p-4 text-[15px] font-medium leading-relaxed">
+          {message.split("\n").map((line, i) => (
+            <div key={i} dir="auto" className="min-h-[1.4em] whitespace-pre-wrap break-words">
+              {line}
+            </div>
+          ))}
+        </div>
         <div className="mt-5 space-y-3">
           <Button variant="whatsapp" size="lg" className="w-full" onClick={share}>
-            <Send /> Share with pictures
+            <Send /> {isEdit ? "Share update" : "Share with pictures"}
           </Button>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={isEdit ? "grid" : "grid grid-cols-2 gap-3"}>
             <Button variant="outline" onClick={copy}>
               <Copy /> Copy Message
             </Button>
-            <Button variant="outline" onClick={downloadPhotos}>
-              <Download /> Download Pictures
-            </Button>
+            {!isEdit && (
+              <Button variant="outline" onClick={downloadPhotos}>
+                <Download /> Download Pictures
+              </Button>
+            )}
           </div>
           <Button variant="outline" className="w-full" onClick={openGroup}>
             <ExternalLink /> Open WhatsApp Group
           </Button>
-          {!isOpinion && !alreadySent && (
+          {!isEdit && !isOpinion && !alreadySent && (
             <Button variant="soft" className="w-full" onClick={markSent}>
               <CheckCircle2 /> I've sent it - mark as Sent to Supplier
             </Button>
           )}
-          {!isOpinion && alreadySent && (
+          {!isEdit && !isOpinion && alreadySent && (
             <p className="flex items-center justify-center gap-2 pt-1 text-base font-bold text-emerald-700">
               <CheckCircle2 className="size-5" /> Already marked as sent
             </p>
+          )}
+          {isEdit && (
+            <Button variant="soft" className="w-full" onClick={markSent}>
+              <CheckCircle2 /> I've sent the update
+            </Button>
           )}
         </div>
       </DialogContent>

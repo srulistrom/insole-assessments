@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Archive, CheckCheck, CloudOff, FileText, HardDriveUpload, MessageCircle, PackageCheck, Phone, Printer, Send, UserCheck } from "lucide-react";
+import { ArrowLeft, Archive, CheckCheck, CloudOff, FileText, HardDriveUpload, MessageCircle, PackageCheck, Pencil, Phone, Printer, Send, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -200,6 +200,13 @@ export function JobDetail({ id }: { id: string }) {
         {a.status === "arrived" && (
           <Button size="lg" className="w-full" onClick={() => act(() => setStatus(a.id, "picked_up"), "Picked up!")}>
             <UserCheck /> Mark as Picked Up
+          </Button>
+        )}
+        {!isDraft && a.status !== "cancelled" && (
+          <Button asChild variant="outline" className="w-full">
+            <Link href={`/jobs/${a.id}/edit`}>
+              <Pencil /> Edit order
+            </Link>
           </Button>
         )}
         {!isDraft && a.status !== "cancelled" && (
