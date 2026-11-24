@@ -152,8 +152,7 @@ export function Wizard() {
     if (!form.first_name.trim() || !form.last_name.trim()) p.push("Name");
     if (!form.phone.trim()) p.push("Phone");
     if (settings.field_shoe_size && !form.shoe_size.trim()) p.push("Shoe size");
-    if (!pics[0]) p.push("Picture 1");
-    if (!pics[1]) p.push("Picture 2");
+    if (!pics[0]) p.push("Picture 1"); // only the first picture is required; every other picture is optional
     return p;
   }
   function orderProblems() {
@@ -177,7 +176,7 @@ export function Wizard() {
       return setStep(2);
     }
     if (step === 2) {
-      if (!pics[0] || !pics[1]) return toast.error("Add Picture 1 and Picture 2 first", { description: "Extra pictures are optional." });
+      if (!pics[0]) return toast.error("Add Picture 1 first", { description: "All other pictures are optional." });
       return setStep(3);
     }
     if (step === 3) {
@@ -252,8 +251,8 @@ export function Wizard() {
         assessor_id: assessor!.id,
         assessor_name: assessor!.name,
         status: asDraft ? "draft" : "new",
-        foam_photo_right_url: paths[0],
-        foam_photo_left_url: paths[1],
+        foam_photo_right_url: paths[0], // Picture 1 (required)
+        foam_photo_left_url: paths[1] ?? null, // Picture 2 (optional)
         extra_photo_urls: paths.slice(2),
       });
       if (error) throw new Error(error.message);
@@ -387,7 +386,7 @@ export function Wizard() {
         {step === 2 && (
           <section>
             <h1 className="text-3xl font-extrabold tracking-tight">Pictures</h1>
-            <p className="mt-1 text-base font-medium text-muted">Two clear pictures are needed. Add more if it helps.</p>
+            <p className="mt-1 text-base font-medium text-muted">One clear picture is needed. Add more if it helps.</p>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {pics.map((b, i) => (
                 <FoamPhotoCard
@@ -395,7 +394,8 @@ export function Wizard() {
                   label={`PICTURE ${i + 1}`}
                   blob={b}
                   onChange={(nb) => setPics((p) => p.map((x, j) => (j === i ? nb : x)))}
-                  onRemove={i >= 2 ? () => setPics((p) => p.filter((_, j) => j !== i)) : undefined}
+                  optional={i >= 1}
+                  onRemove={i >= 1 ? () => setPics((p) => p.filter((_, j) => j !== i)) : undefined}
                 />
               ))}
             </div>

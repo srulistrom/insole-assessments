@@ -157,7 +157,7 @@ export async function generatePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...ink);
-  doc.text(photos.length > 2 ? "Pictures" : "Picture 1 & 2", M, y);
+  doc.text(photos.length > 2 ? "Pictures" : photos.length === 2 ? "Picture 1 & 2" : "Picture 1", M, y);
   y += 4;
   const boxW = (W - 2 * M - 8) / 2;
   const drawPhoto = async (label: string, data: string | null, x: number, top: number, boxH: number) => {
@@ -175,7 +175,7 @@ export async function generatePdf(
   };
   const firstH = Math.min(297 - y - 22, 80);
   await drawPhoto("PICTURE 1", photos[0] ?? null, M, y, firstH);
-  await drawPhoto("PICTURE 2", photos[1] ?? null, M + boxW + 8, y, firstH);
+  if (photos[1]) await drawPhoto("PICTURE 2", photos[1], M + boxW + 8, y, firstH); // Picture 2 is optional
 
   // Extra pictures (3, 4, ...) go on following pages, two per row.
   const footer = (pageNo: number) => {

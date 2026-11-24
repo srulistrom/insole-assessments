@@ -11,12 +11,15 @@ export function FoamPhotoCard({
   blob,
   onChange,
   onRemove,
+  optional,
 }: {
   label: string;
   blob: Blob | null;
   onChange: (b: Blob | null) => void;
-  /** Extra pictures can be removed; Picture 1 and 2 cannot. */
+  /** Every picture after the first can be removed. */
   onRemove?: () => void;
+  /** Shows an "Optional" tag; only Picture 1 is required. */
+  optional?: boolean;
 }) {
   const camRef = useRef<HTMLInputElement>(null);
   const galRef = useRef<HTMLInputElement>(null);
@@ -52,7 +55,10 @@ export function FoamPhotoCard({
   return (
     <div className={cn("overflow-hidden rounded-3xl border-2 bg-card shadow-soft transition-colors", done ? "border-emerald-500" : "border-line")}>
       <div className="flex items-center justify-between px-5 pt-4">
-        <h3 className="text-xl font-extrabold tracking-tight">{label}</h3>
+        <h3 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
+          {label}
+          <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-extrabold", optional ? "bg-line text-muted" : "bg-red-50 text-red-700")}>{optional ? "Optional" : "Required"}</span>
+        </h3>
         <div className="flex items-center gap-2">
           {done && <CheckCircle2 className="animate-pop size-8 text-emerald-600" />}
           {onRemove && (

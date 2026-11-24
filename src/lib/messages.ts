@@ -11,7 +11,7 @@ const dash = (v: string | null) => (v && v.trim() ? v.trim() : "-");
 
 export function supplierMessage(a: Assessment) {
   const pics = photoPaths(a).length;
-  const attached = pics > 2 ? `Foam pictures attached (${pics})` : "Foam pictures attached";
+  const attached = pics > 2 ? `Foam pictures attached (${pics})` : pics === 1 ? "Foam picture attached" : "Foam pictures attached";
 
   // A draft has no arch type yet: this is a request for the supplier's opinion, NOT an order.
   if (a.status === "draft") {
