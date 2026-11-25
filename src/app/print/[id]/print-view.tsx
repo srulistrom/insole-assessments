@@ -21,7 +21,7 @@ import { SupplierSheet } from "@/components/supplier-sheet";
 // The label is built from three fixed regions (header / body / QR code) so that long names or notes
 // can never push the QR code off the page or spill the sheet onto a second page.
 const PRINT_CSS = `
-@page { size: A4 landscape; margin: 0; }
+@page { size: A4 portrait; margin: 0; }
 .sheet { position: relative; width: 297mm; height: 210mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, Helvetica, sans-serif; }
 .label { width: 148mm; height: 210mm; float: left; padding: 12mm; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
 .fold-line { border-right: 2px dashed #000; height: 210mm; position: absolute; left: 0; top: 0; width: 148mm; pointer-events: none; }
@@ -50,8 +50,11 @@ const PRINT_CSS = `
   html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; }
   .print-root { background: #fff !important; min-height: 0 !important; }
   .no-print { display: none !important; }
-  .preview-wrap { height: auto !important; width: auto !important; overflow: visible !important; margin: 0 !important; }
-  .sheet { transform: none !important; box-shadow: none !important; height: 209.5mm !important; break-after: avoid; break-inside: avoid; }
+  /* The page is plain A4 PORTRAIT (every printer's default, so nothing has to be changed in the print window).
+     The landscape sheet is turned a quarter-turn inside it, so the ink lands on the paper exactly as a landscape print would:
+     label on one half, dashed fold line across the middle, other half blank. */
+  .preview-wrap { position: relative !important; width: 209.5mm !important; height: 296.5mm !important; overflow: hidden !important; margin: 0 !important; }
+  .sheet { position: absolute !important; top: 0 !important; left: 0 !important; transform-origin: 0 0 !important; transform: translate(209.5mm, 0) rotate(90deg) !important; box-shadow: none !important; height: 209.5mm !important; break-after: avoid; break-inside: avoid; }
   .label { height: 209.5mm !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
@@ -170,7 +173,7 @@ export function PrintView({ id }: { id: string }) {
               <p className="truncate text-lg font-extrabold">
                 {a.order_number} · {fullNameText}
               </p>
-              <p className="text-sm font-semibold text-muted">Prints on A4 landscape - fold on the dashed line</p>
+              <p className="text-sm font-semibold text-muted">Print on A4 - then fold on the dashed line</p>
             </div>
           </div>
 
@@ -192,7 +195,7 @@ export function PrintView({ id }: { id: string }) {
                 </>
               ) : (
                 <>
-                  In the print window choose your printer, paper <b>A4</b>, <b>Landscape</b>, margins <b>None</b>.{" "}
+                  In the print window choose your printer and press print. Leave it on <b>A4</b> and <b>Portrait</b> - the label is already turned to fit.{" "}
                 </>
               )}
               <a href={pdfUrl} download={labelFileName(a)} className="inline-flex items-center gap-1 font-bold text-primary underline">
