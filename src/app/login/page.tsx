@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { toast } from "sonner";
@@ -101,6 +102,14 @@ export default function LoginPage() {
           </Button>
         </form>
         )}
+
+        <p className="mt-6 text-center text-sm font-semibold text-primary-foreground/80">
+          Insole assessments and orders for {shop_name || "our"} staff
+          <span className="mx-2 opacity-60">·</span>
+          <Link href="/privacy" className="underline underline-offset-2">
+            Privacy policy
+          </Link>
+        </p>
       </div>
     </div>
   );
